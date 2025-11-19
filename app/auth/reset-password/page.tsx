@@ -2,6 +2,8 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+
+export const dynamic = "force-dynamic"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -61,7 +63,7 @@ export default function ForgotPasswordPage() {
             <Alert>
               <Mail className="h-4 w-4" />
               <AlertDescription>
-                Enviamos um link de recuperação para <strong>{email}</strong>. 
+                Enviamos um link de recuperação para <strong>{email}</strong>.
                 Clique no link do email para redefinir sua senha.
               </AlertDescription>
             </Alert>

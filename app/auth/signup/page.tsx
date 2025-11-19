@@ -2,6 +2,8 @@
 
 import type React from "react"
 
+export const dynamic = "force-dynamic"
+
 import { supabase } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -51,7 +53,7 @@ export default function SignUpPage() {
         password,
         options: {
           emailRedirectTo:
-            `${process.env.NEXT_PUBLIC_SITE_URL || window.location.origin}/${role}/dashboard`,
+            `${process.env.NEXT_PUBLIC_SITE_URL || window.location.origin} /${role}/dashboard`,
           data: {
             full_name: fullName,
             role: role,

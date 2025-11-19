@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+
+export const dynamic = "force-dynamic"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -28,7 +30,7 @@ export default function ResetPasswordPage() {
     // Check if user came from password reset email
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession()
-      
+
       if (session) {
         setValidSession(true)
       } else {

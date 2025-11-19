@@ -10,11 +10,13 @@ import { Label } from "@/components/ui/label"
 import { Logo } from "@/components/ui/logo"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { Suspense, useState } from "react"
 import { AlertCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useTranslation } from "@/lib/i18n/use-translation"
 import { LanguageToggle } from "@/components/language-toggle"
+
+export const dynamic = "force-dynamic"
 
 export default function LoginPage() {
   const { t } = useTranslation()
