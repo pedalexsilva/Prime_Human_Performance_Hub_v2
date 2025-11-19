@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { generateDailySummaries, generateMonthlySummaries } from "@/lib/jobs/aggregations"
 import { subDays, startOfMonth, subMonths, isFirstDayOfMonth } from "date-fns"
 
+export const dynamic = "force-dynamic"
 // Ensuring maxDuration is correctly set to 60 for Vercel limits
 export const maxDuration = 60 // seconds - Vercel limit
 

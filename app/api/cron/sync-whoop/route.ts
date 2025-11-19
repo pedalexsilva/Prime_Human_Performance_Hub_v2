@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { syncAllUsers } from "@/lib/whoop/sync"
 
+export const dynamic = "force-dynamic"
 export const maxDuration = 60 // seconds - Vercel limit
 
 export async function GET(request: NextRequest) {

@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react"
 import { redirect } from "next/navigation"
 import Link from "next/link"
+
+export const dynamic = "force-dynamic"
 import { UserMenu } from "@/components/ui/user-menu"
 import { UserAvatar } from "@/components/doctor/user-avatar"
 import { AthleteCard } from "@/components/doctor/athlete-card"

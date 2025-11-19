@@ -1,6 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getSyncStatsByPeriod } from "@/lib/queries/sync-stats"
 
+export const dynamic = "force-dynamic"
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams

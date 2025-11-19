@@ -2,6 +2,8 @@ import { NextResponse } from "next/server"
 import { getAthleteSyncStatus } from "@/lib/queries/sync-stats"
 import { createServerClient } from "@/lib/supabase/server"
 
+export const dynamic = "force-dynamic"
+
 export async function GET() {
   try {
     const supabase = await createServerClient()

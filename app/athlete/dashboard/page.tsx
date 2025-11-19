@@ -2,16 +2,18 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+
+export const dynamic = "force-dynamic"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { useTranslation } from "@/lib/i18n/use-translation"
 import { UserAvatar } from "@/components/athlete/user-avatar"
 import { MetricCard } from "@/components/athlete/metric-card"
-import { 
-  getRecoveryMessage, 
-  getHRVMessage, 
+import {
+  getRecoveryMessage,
+  getHRVMessage,
   getSleepMessage,
-  formatSleepDuration 
+  formatSleepDuration
 } from "@/lib/utils/metric-messages"
 import { Activity, Heart, Moon, RefreshCw } from "lucide-react"
 
@@ -39,12 +41,12 @@ const SyncButton = dynamic(() => import("@/components/athlete/sync-button").then
 export default function AthleteDashboardPage() {
   const router = useRouter()
   const supabase = createBrowserClient()
-  
+
   // Safe translation with fallback
   let t: any
   let locale: string = 'pt'
   let translationError = false
-  
+
   try {
     const translation = useTranslation()
     t = translation.t
@@ -98,7 +100,7 @@ export default function AthleteDashboardPage() {
   // Format date in Portuguese or English
   const formatDate = (locale: string = 'pt'): string => {
     const date = new Date()
-    
+
     if (locale === 'pt' || locale === 'pt-PT') {
       // Portuguese format: Segunda-feira, 18 de Novembro de 2025
       return date.toLocaleDateString('pt-PT', {
@@ -121,7 +123,7 @@ export default function AthleteDashboardPage() {
   // Format relative time
   const formatRelativeTime = (dateString: string | null | undefined): string => {
     if (!dateString) return t("athlete.dashboard.metrics.noData")
-    
+
     const date = new Date(dateString)
     const now = new Date()
     const diffMs = now.getTime() - date.getTime()
@@ -144,7 +146,7 @@ export default function AthleteDashboardPage() {
         let user
         try {
           const { data: { user: authUser }, error: authError } = await supabase.auth.getUser()
-          
+
           if (authError) {
             console.error("Auth error:", authError)
             if (mounted) {
@@ -152,9 +154,9 @@ export default function AthleteDashboardPage() {
             }
             return
           }
-          
+
           user = authUser
-          
+
           if (!user) {
             if (mounted) {
               router.push("/auth/login")
@@ -228,10 +230,10 @@ export default function AthleteDashboardPage() {
           }
 
           const isConnected = connectionData?.is_active === true
-          
+
           if (mounted) {
-            setConnection({ 
-              ...connectionData, 
+            setConnection({
+              ...connectionData,
               isConnected,
               hasInitialSync: connectionData?.initial_sync_completed === true
             })
@@ -240,12 +242,12 @@ export default function AthleteDashboardPage() {
           // 4) Check if this is a fresh connection
           const params = new URLSearchParams(window.location.search)
           const justConnected = params.get("success") === "whoop_connected"
-          
+
           // Trigger initial sync automatically after OAuth connection
           if (justConnected && isConnected && !connectionData?.initial_sync_completed && mounted) {
             console.log("[Dashboard] Fresh WHOOP connection - triggering sync")
             setSyncingInitial(true)
-            
+
             try {
               const response = await fetch('/api/sync/whoop/manual', {
                 method: 'POST',
@@ -388,7 +390,7 @@ export default function AthleteDashboardPage() {
   // Calculate metrics
   const recoveryScore = metrics.latestRecovery?.recovery_score
   // Convert HRV from seconds to milliseconds (Whoop API returns seconds)
-  const hrvValue = metrics.latestRecovery?.hrv_rmssd && metrics.latestRecovery.hrv_rmssd > 0 
+  const hrvValue = metrics.latestRecovery?.hrv_rmssd && metrics.latestRecovery.hrv_rmssd > 0
     ? metrics.latestRecovery.hrv_rmssd * 1000  // Convert to milliseconds
     : null
   const sleepMinutes = metrics.latestSleep?.sleep_duration_minutes
@@ -489,7 +491,7 @@ export default function AthleteDashboardPage() {
             <CardContent>
               <p className="text-sm text-muted-foreground">
                 {connection?.isConnected
-                  ? syncingInitial 
+                  ? syncingInitial
                     ? t("athlete.dashboard.trends.syncing")
                     : t("athlete.dashboard.trends.noRecentData")
                   : t("athlete.dashboard.trends.connectPrompt")}

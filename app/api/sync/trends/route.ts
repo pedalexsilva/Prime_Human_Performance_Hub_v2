@@ -1,8 +1,10 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { getSyncTrendData } from "@/lib/queries/sync-stats"
 import { createServerClient } from "@/lib/supabase/server"
 
-export async function GET(request: Request) {
+export const dynamic = "force-dynamic"
+
+export async function GET(request: NextRequest) {
   try {
     const supabase = await createServerClient()
 

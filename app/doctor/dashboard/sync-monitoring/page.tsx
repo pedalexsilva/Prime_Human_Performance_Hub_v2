@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+
+export const dynamic = "force-dynamic"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { UserMenu } from "@/components/ui/user-menu"
 import { SyncKPICards } from "@/components/sync-monitoring/sync-kpi-cards"
