@@ -18,23 +18,23 @@ import {
 import { Activity, Heart, Moon, RefreshCw } from "lucide-react"
 
 // Lazy load heavy components
-import dynamic from "next/dynamic"
+import nextDynamic from "next/dynamic"
 
-const RecoveryChart = dynamic(() => import("@/components/athlete/recovery-chart").then(mod => ({ default: mod.RecoveryChart })), {
+const RecoveryChart = nextDynamic(() => import("@/components/athlete/recovery-chart").then(mod => ({ default: mod.RecoveryChart })), {
   loading: () => <Card><CardContent className="pt-6"><p>Carregando gráfico...</p></CardContent></Card>,
   ssr: false
 })
 
-const ConnectionCard = dynamic(() => import("@/components/athlete/connection-card").then(mod => ({ default: mod.ConnectionCard })), {
+const ConnectionCard = nextDynamic(() => import("@/components/athlete/connection-card").then(mod => ({ default: mod.ConnectionCard })), {
   loading: () => <Card><CardContent className="pt-6"><p>Carregando...</p></CardContent></Card>,
   ssr: false
 })
 
-const UserMenu = dynamic(() => import("@/components/ui/user-menu").then(mod => ({ default: mod.UserMenu })), {
+const UserMenu = nextDynamic(() => import("@/components/ui/user-menu").then(mod => ({ default: mod.UserMenu })), {
   ssr: false
 })
 
-const SyncButton = dynamic(() => import("@/components/athlete/sync-button").then(mod => ({ default: mod.SyncButton })), {
+const SyncButton = nextDynamic(() => import("@/components/athlete/sync-button").then(mod => ({ default: mod.SyncButton })), {
   ssr: false
 })
 
