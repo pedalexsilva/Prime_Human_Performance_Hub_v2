@@ -1,0 +1,197 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Prime HP Color Palette */
+  --color-navy-dark: #0d1b2a;
+  --color-navy-medium: #1b2a3d;
+  --color-navy-light: #2a3a4f;
+
+  --color-gold: #c49a6c;
+  --color-gold-light: #d4aa7c;
+  --color-gold-dark: #b48a5c;
+
+  /* Neutrals */
+  --color-white: #ffffff;
+  --color-gray-50: #f8f9fa;
+  --color-gray-100: #e9ecef;
+  --color-gray-200: #dee2e6;
+  --color-gray-700: #495057;
+  --color-gray-900: #212529;
+
+  /* Semantic tokens - dark theme by default */
+  --background: var(--color-navy-dark);
+  --foreground: var(--color-white);
+
+  --card: var(--color-navy-medium);
+  --card-foreground: var(--color-white);
+
+  --popover: var(--color-navy-medium);
+  --popover-foreground: var(--color-white);
+
+  --primary: var(--color-gold);
+  --primary-foreground: var(--color-navy-dark);
+
+  --secondary: var(--color-navy-light);
+  --secondary-foreground: var(--color-white);
+
+  --muted: var(--color-navy-light);
+  --muted-foreground: var(--color-gray-200);
+
+  --accent: var(--color-gold-light);
+  --accent-foreground: var(--color-navy-dark);
+
+  /* Alert colors */
+  --critical: #dc2626;
+  --critical-foreground: #ffffff;
+
+  --warning: #f59e0b;
+  --warning-foreground: var(--color-navy-dark);
+
+  --info: #3b82f6;
+  --info-foreground: #ffffff;
+
+  --success: #10b981;
+  --success-foreground: #ffffff;
+
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+
+  /* Borders */
+  --border: rgba(196, 154, 108, 0.2);
+  --input: rgba(196, 154, 108, 0.3);
+  --ring: var(--color-gold);
+
+  /* Charts */
+  --chart-1: var(--color-gold);
+  --chart-2: #3b82f6;
+  --chart-3: #10b981;
+  --chart-4: #f59e0b;
+  --chart-5: #8b5cf6;
+
+  --radius: 0.5rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.145 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.145 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.985 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.396 0.141 25.723);
+  --destructive-foreground: oklch(0.637 0.237 25.331);
+  --border: oklch(0.269 0 0);
+  --input: oklch(0.269 0 0);
+  --ring: oklch(0.439 0 0);
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(0.269 0 0);
+  --sidebar-ring: oklch(0.439 0 0);
+}
+
+/* Fixed @theme block with proper Tailwind v4 syntax - using direct values instead of color prefix */
+@theme {
+  --font-sans: "Poppins", "Poppins Fallback", system-ui, sans-serif;
+  --font-mono: "Geist Mono", "Geist Mono Fallback", monospace;
+
+  --color-background: #0d1b2a;
+  --color-foreground: #ffffff;
+  --color-card: #1b2a3d;
+  --color-card-foreground: #ffffff;
+  --color-popover: #1b2a3d;
+  --color-popover-foreground: #ffffff;
+  --color-primary: #c49a6c;
+  --color-primary-foreground: #0d1b2a;
+  --color-secondary: #2a3a4f;
+  --color-secondary-foreground: #ffffff;
+  --color-muted: #2a3a4f;
+  --color-muted-foreground: #dee2e6;
+  --color-accent: #d4aa7c;
+  --color-accent-foreground: #0d1b2a;
+  --color-destructive: #dc2626;
+  --color-destructive-foreground: #ffffff;
+  --color-border: rgba(196, 154, 108, 0.2);
+  --color-input: rgba(196, 154, 108, 0.3);
+  --color-ring: #c49a6c;
+  --color-chart-1: #c49a6c;
+  --color-chart-2: #3b82f6;
+  --color-chart-3: #10b981;
+  --color-chart-4: #f59e0b;
+  --color-chart-5: #8b5cf6;
+  --radius-sm: calc(0.5rem - 4px);
+  --radius-md: calc(0.5rem - 2px);
+  --radius-lg: 0.5rem;
+  --radius-xl: calc(0.5rem + 4px);
+  --color-sidebar: oklch(0.985 0 0);
+  --color-sidebar-foreground: oklch(0.145 0 0);
+  --color-sidebar-primary: oklch(0.205 0 0);
+  --color-sidebar-primary-foreground: oklch(0.985 0 0);
+  --color-sidebar-accent: oklch(0.97 0 0);
+  --color-sidebar-accent-foreground: oklch(0.205 0 0);
+  --color-sidebar-border: oklch(0.922 0 0);
+  --color-sidebar-ring: oklch(0.708 0 0);
+  --color-critical: #dc2626;
+  --color-critical-foreground: #ffffff;
+  --color-warning: #f59e0b;
+  --color-warning-foreground: #0d1b2a;
+  --color-info: #3b82f6;
+  --color-info-foreground: #ffffff;
+  --color-success: #10b981;
+  --color-success-foreground: #ffffff;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+}
+
+/* Added custom scrollbar styling for premium feel */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-navy-medium);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-gold);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-gold-light);
+}
