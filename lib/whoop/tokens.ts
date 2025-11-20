@@ -224,7 +224,22 @@ export async function ensureValidToken(userId: string): Promise<string> {
         errorMessage.includes('5') && errorMessage.includes('server error')
 
       if (isPermanentError) {
-        // ❌ ERRO PERMANENTE: Tokens inválidos/revogados
+        // 🛑 RACE CONDITION CHECK
+        // Before deleting, check if the token was updated by another process in the meantime
+        console.warn("[⚠️ Token Validation] Permanent error detected. Checking for race condition...")
+
+        const currentDbTokens = await getTokens(userId)
+
+        // If the refresh token in DB is DIFFERENT from the one we tried to use,
+        // it means another process successfully refreshed it!
+        if (currentDbTokens && currentDbTokens.refresh_token !== tokens.refresh_token) {
+          console.log("[✅ Token Validation] Race condition detected! Token was already refreshed by another process.")
+          if (currentDbTokens.access_token) {
+            return currentDbTokens.access_token
+          }
+        }
+
+        // ❌ REAL PERMANENT ERROR: Tokens revoked/invalid and NOT updated
         console.error("[❌ Token Validation] PERMANENT ERROR - Tokens revoked or invalid")
         console.warn("[⚠️ Token Validation] Marking connection as inactive and deleting tokens")
 
