@@ -191,12 +191,14 @@ export async function ensureValidToken(userId: string): Promise<string> {
 
     // Verificar se é erro de tokens revogados/inválidos (permanente)
     const isPermanentError =
+      errorMessage.includes('400') ||
       errorMessage.includes('401') ||
       errorMessage.includes('403') ||
       errorMessage.includes('invalid_grant') ||
       errorMessage.includes('unauthorized') ||
       errorMessage.includes('token_revoked') ||
-      errorMessage.includes('invalid or revoked')
+      errorMessage.includes('invalid or revoked') ||
+      errorMessage.includes('Bad Request')
 
     // Verificar se é erro temporário (rede, rate limit, etc)
     const isTemporaryError =
