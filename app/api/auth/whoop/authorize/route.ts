@@ -26,9 +26,17 @@ export async function GET(req: Request) {
     }
 
     // 3. Construct redirect URI
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
+    // 3. Construct redirect URI
+    const getSiteUrl = () => {
+      if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL;
+      if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+      return "https://prime-human-performance.vercel.app"; // Fallback
+    };
+
+    const siteUrl = getSiteUrl();
+
     if (!siteUrl) {
-      console.error("[Whoop OAuth] Missing NEXT_PUBLIC_SITE_URL")
+      console.error("[Whoop OAuth] Could not determine SITE_URL")
       return NextResponse.json({ error: "Misconfigured server" }, { status: 500 })
     }
 
@@ -36,7 +44,7 @@ export async function GET(req: Request) {
     console.log("[DEBUG][authorize] Using redirectUri:", redirectUri)
 
     const state = crypto.randomBytes(32).toString("hex")
-    
+
     const supabase = await createServerClient()
     const { error: stateError } = await supabase
       .from("oauth_states")
