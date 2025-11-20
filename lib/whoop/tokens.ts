@@ -1,5 +1,6 @@
 // lib/whoop/tokens.ts
 // ⚠️ VERSÃO MELHORADA: Não deleta tokens em erros temporários
+// v2.0: Request coalescing + permanent error handling
 
 import { createServiceRoleClient } from "@/lib/supabase/service"
 import { refreshAccessToken } from "./oauth"
