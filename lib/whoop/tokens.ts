@@ -124,13 +124,23 @@ export async function getTokens(userId: string): Promise<StoredTokens | null> {
   }
 }
 
+// Map to track active refresh promises per user to prevent race conditions
+const refreshPromises: Record<string, Promise<string> | undefined> = {}
+
 /**
  * ⚠️ MELHORADO: Distingue entre erros temporários e permanentes
+ * + Request Coalescing para evitar race conditions
  * 
  * Ensure we have a valid access token.
  * Refresh if needed and update Supabase.
  */
 export async function ensureValidToken(userId: string): Promise<string> {
+  // Check if there's already a refresh in progress for this user
+  if (refreshPromises[userId]) {
+    console.log(`[🔒 Token Validation] Joining existing refresh promise for user ${userId}`)
+    return refreshPromises[userId]
+  }
+
   console.log("[🔍 Token Validation] Starting for user:", userId)
 
   const tokens = await getTokens(userId)
@@ -160,97 +170,108 @@ export async function ensureValidToken(userId: string): Promise<string> {
 
   console.log("[🔄 Token Validation] Token expired, attempting refresh...")
 
-  try {
-    const refreshed = await refreshAccessToken(tokens.refresh_token)
+  // Create a new refresh promise
+  const refreshPromise = (async () => {
+    try {
+      const refreshed = await refreshAccessToken(tokens.refresh_token!)
 
-    console.log("[✅ Token Validation] Refresh successful, saving new tokens...")
+      console.log("[✅ Token Validation] Refresh successful, saving new tokens...")
 
-    await saveTokens(
-      userId,
-      refreshed.access_token,
-      refreshed.refresh_token || tokens.refresh_token,
-      refreshed.expires_in,
-    )
+      await saveTokens(
+        userId,
+        refreshed.access_token,
+        refreshed.refresh_token || tokens.refresh_token,
+        refreshed.expires_in,
+      )
 
-    console.log("[✅ Token Validation] New tokens saved successfully")
-    return refreshed.access_token
+      console.log("[✅ Token Validation] New tokens saved successfully")
+      return refreshed.access_token
 
-  } catch (refreshError) {
-    const errorMessage = refreshError instanceof Error ? refreshError.message : String(refreshError)
+    } catch (refreshError) {
+      const errorMessage = refreshError instanceof Error ? refreshError.message : String(refreshError)
 
-    console.error("[❌ Token Validation] Refresh failed:", {
-      error: errorMessage,
-      errorType: refreshError instanceof Error ? refreshError.constructor.name : typeof refreshError,
-    })
-
-    // ============================================
-    // 🎯 CRITICAL: Distinguir erros temporários vs permanentes
-    // ============================================
-
-    const supabase = createServiceRoleClient()
-
-    // Verificar se é erro de tokens revogados/inválidos (permanente)
-    const isPermanentError =
-      errorMessage.includes('400') ||
-      errorMessage.includes('401') ||
-      errorMessage.includes('403') ||
-      errorMessage.includes('invalid_grant') ||
-      errorMessage.includes('unauthorized') ||
-      errorMessage.includes('token_revoked') ||
-      errorMessage.includes('invalid or revoked') ||
-      errorMessage.includes('Bad Request')
-
-    // Verificar se é erro temporário (rede, rate limit, etc)
-    const isTemporaryError =
-      errorMessage.includes('429') ||
-      errorMessage.includes('rate limit') ||
-      errorMessage.includes('network') ||
-      errorMessage.includes('timeout') ||
-      errorMessage.includes('ECONNREFUSED') ||
-      errorMessage.includes('ETIMEDOUT') ||
-      errorMessage.includes('5') && errorMessage.includes('server error')
-
-    if (isPermanentError) {
-      // ❌ ERRO PERMANENTE: Tokens inválidos/revogados
-      console.error("[❌ Token Validation] PERMANENT ERROR - Tokens revoked or invalid")
-      console.warn("[⚠️ Token Validation] Marking connection as inactive and deleting tokens")
-
-      // Desativar conexão
-      await supabase
-        .from("device_connections")
-        .update({ is_active: false })
-        .eq("user_id", userId)
-        .eq("platform", "whoop")
-
-      // Deletar tokens inválidos
-      await supabase
-        .from("whoop_tokens")
-        .delete()
-        .eq("user_id", userId)
-
-      throw new Error("Whoop tokens expired or revoked. Please reconnect your account.")
-
-    } else if (isTemporaryError) {
-      // ⚠️ ERRO TEMPORÁRIO: Manter tokens, tentar novamente mais tarde
-      console.warn("[⚠️ Token Validation] TEMPORARY ERROR - Keeping tokens for retry")
-      console.warn("[⚠️ Token Validation] Next sync will retry refresh")
-
-      // NÃO deletar tokens, NÃO desativar conexão
-      throw new Error(`Temporary error refreshing Whoop tokens: ${errorMessage}. Will retry on next sync.`)
-
-    } else {
-      // ❓ ERRO DESCONHECIDO: Por segurança, manter tokens mas avisar
-      console.warn("[⚠️ Token Validation] UNKNOWN ERROR - Keeping tokens but marking as suspicious")
-
-      // NÃO deletar tokens, mas logar para investigação
-      console.error("[🔍 Token Validation] Unknown error type - please investigate:", {
-        errorMessage,
-        fullError: refreshError,
+      console.error("[❌ Token Validation] Refresh failed:", {
+        error: errorMessage,
+        errorType: refreshError instanceof Error ? refreshError.constructor.name : typeof refreshError,
       })
 
-      throw new Error(`Error refreshing Whoop tokens: ${errorMessage}. Please check logs.`)
+      // ============================================
+      // 🎯 CRITICAL: Distinguir erros temporários vs permanentes
+      // ============================================
+
+      const supabase = createServiceRoleClient()
+
+      // Verificar se é erro de tokens revogados/inválidos (permanente)
+      const isPermanentError =
+        errorMessage.includes('400') ||
+        errorMessage.includes('401') ||
+        errorMessage.includes('403') ||
+        errorMessage.includes('invalid_grant') ||
+        errorMessage.includes('unauthorized') ||
+        errorMessage.includes('token_revoked') ||
+        errorMessage.includes('invalid or revoked') ||
+        errorMessage.includes('Bad Request')
+
+      // Verificar se é erro temporário (rede, rate limit, etc)
+      const isTemporaryError =
+        errorMessage.includes('429') ||
+        errorMessage.includes('rate limit') ||
+        errorMessage.includes('network') ||
+        errorMessage.includes('timeout') ||
+        errorMessage.includes('ECONNREFUSED') ||
+        errorMessage.includes('ETIMEDOUT') ||
+        errorMessage.includes('5') && errorMessage.includes('server error')
+
+      if (isPermanentError) {
+        // ❌ ERRO PERMANENTE: Tokens inválidos/revogados
+        console.error("[❌ Token Validation] PERMANENT ERROR - Tokens revoked or invalid")
+        console.warn("[⚠️ Token Validation] Marking connection as inactive and deleting tokens")
+
+        // Desativar conexão
+        await supabase
+          .from("device_connections")
+          .update({ is_active: false })
+          .eq("user_id", userId)
+          .eq("platform", "whoop")
+
+        // Deletar tokens inválidos
+        await supabase
+          .from("whoop_tokens")
+          .delete()
+          .eq("user_id", userId)
+
+        throw new Error("Whoop tokens expired or revoked. Please reconnect your account.")
+
+      } else if (isTemporaryError) {
+        // ⚠️ ERRO TEMPORÁRIO: Manter tokens, tentar novamente mais tarde
+        console.warn("[⚠️ Token Validation] TEMPORARY ERROR - Keeping tokens for retry")
+        console.warn("[⚠️ Token Validation] Next sync will retry refresh")
+
+        // NÃO deletar tokens, NÃO desativar conexão
+        throw new Error(`Temporary error refreshing Whoop tokens: ${errorMessage}. Will retry on next sync.`)
+
+      } else {
+        // ❓ ERRO DESCONHECIDO: Por segurança, manter tokens mas avisar
+        console.warn("[⚠️ Token Validation] UNKNOWN ERROR - Keeping tokens but marking as suspicious")
+
+        // NÃO deletar tokens, mas logar para investigação
+        console.error("[🔍 Token Validation] Unknown error type - please investigate:", {
+          errorMessage,
+          fullError: refreshError,
+        })
+
+        throw new Error(`Error refreshing Whoop tokens: ${errorMessage}. Please check logs.`)
+      }
+    } finally {
+      // Always remove the promise from the map when done (success or failure)
+      delete refreshPromises[userId]
     }
-  }
+  })()
+
+  // Store the promise in the map
+  refreshPromises[userId] = refreshPromise
+
+  return refreshPromise
 }
 
 /**
