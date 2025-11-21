@@ -51,7 +51,7 @@ export async function generateDailySummaries(date: Date) {
   for (const user of users) {
     try {
       // Fetch all metrics for the date
-      const [recovery, sleep, workout] = await Promise.all([
+      const [recovery, sleep, workout, cycle] = await Promise.all([
         supabase
           .from("recovery_metrics")
           .select("*")
@@ -69,11 +69,18 @@ export async function generateDailySummaries(date: Date) {
           .select("*")
           .eq("user_id", user.id)
           .eq("metric_date", summaryDate),
+        supabase
+          .from("cycle_metrics")
+          .select("*")
+          .eq("user_id", user.id)
+          .eq("date", summaryDate)
+          .maybeSingle(),
       ])
 
       if (recovery.error) throw recovery.error
       if (sleep.error) throw sleep.error
       if (workout.error) throw workout.error
+      if (cycle.error) throw cycle.error
 
       // Calculate data completeness
       const metricsPresent = [
@@ -86,7 +93,8 @@ export async function generateDailySummaries(date: Date) {
 
       // Aggregate workout data
       const totalCalories = workout.data?.reduce((sum, w) => sum + (w.calories_burned || 0), 0) || null
-      const totalStrain = workout.data?.reduce((sum, w) => sum + (w.strain_score || 0), 0) || null
+      // Use cycle strain (daily strain) if available, otherwise sum workout strains
+      const totalStrain = cycle.data?.strain || workout.data?.reduce((sum, w) => sum + (w.strain_score || 0), 0) || null
       const totalWorkouts = workout.data?.length || 0
 
       // Get unique sources

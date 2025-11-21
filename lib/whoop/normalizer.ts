@@ -40,7 +40,7 @@ export function normalizeRecoveryMetrics(recovery: WhoopRecovery, userId: string
     metric_date: date,
     // Campos de RECOVERY
     recovery_score: recovery.score.recovery_score,
-    hrv_rmssd: recovery.score.hrv_rmssd_milli / 1000, // Convert to seconds
+    hrv_rmssd: recovery.score.hrv_rmssd_milli, // Keep in milliseconds
     hrv_rmssd_milli: recovery.score.hrv_rmssd_milli,
     resting_heart_rate: recovery.score.resting_heart_rate,
     spo2_percentage: recovery.score.spo2_percentage,

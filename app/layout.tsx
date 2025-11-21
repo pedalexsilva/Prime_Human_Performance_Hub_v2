@@ -11,12 +11,12 @@ const poppins = Poppins({
 })
 
 export const metadata: Metadata = {
-  title: "Portal Integrado - Prime Human Performance",
+  title: "Prime Human HUB",
   description: "Portal integrado de métricas de saúde e performance para atletas e médicos",
   generator: "v0.app",
   icons: {
-    icon: "/logo-prime-hp.png",
-    apple: "/logo-prime-hp.png",
+    icon: "/icon.svg",
+    apple: "/icon.svg",
   },
 }
 

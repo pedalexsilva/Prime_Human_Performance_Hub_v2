@@ -22,8 +22,13 @@ export async function POST(request: NextRequest) {
 
     const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single()
 
-    if (!profile || profile.role !== "doctor") {
-      return NextResponse.json({ error: "Only doctors can force sync" }, { status: 403 })
+    // Athletes can sync their own data, doctors can sync any user's data
+    if (profile?.role === "athlete" && userId !== user.id) {
+      return NextResponse.json({ error: "Athletes can only sync their own data" }, { status: 403 })
+    }
+
+    if (!profile || (profile.role !== "doctor" && profile.role !== "athlete")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
     }
 
     const result = await syncUserData(userId)

@@ -19,7 +19,7 @@ interface UserAvatarProps {
     avatarUrl?: string | null
     fullName?: string | null
     userId: string
-    size?: "sm" | "md" | "lg"
+    size?: "sm" | "md" | "lg" | "xl"
     editable?: boolean
 }
 
@@ -28,8 +28,9 @@ export function UserAvatar({
     fullName,
     userId,
     size = "md",
-    editable = false
-}: UserAvatarProps) {
+    editable = false,
+    className
+}: UserAvatarProps & { className?: string }) {
     const [isUploading, setIsUploading] = useState(false)
     const [currentAvatar, setCurrentAvatar] = useState(avatarUrl)
     const [open, setOpen] = useState(false)
@@ -51,7 +52,8 @@ export function UserAvatar({
     const sizeClasses = {
         sm: "h-8 w-8 text-sm",
         md: "h-12 w-12 text-lg",
-        lg: "h-20 w-20 text-2xl"
+        lg: "h-20 w-20 text-2xl",
+        xl: "h-24 w-24 text-3xl"
     }
 
     const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -130,7 +132,7 @@ export function UserAvatar({
     }
 
     const avatarContent = currentAvatar ? (
-        <div className={`relative ${sizeClasses[size]} rounded-full overflow-hidden bg-muted`}>
+        <div className={`relative ${sizeClasses[size]} rounded-full overflow-hidden bg-muted ${className || ''}`}>
             <Image
                 src={currentAvatar}
                 alt={fullName || "User avatar"}
@@ -148,6 +150,7 @@ export function UserAvatar({
         flex items-center justify-center
         font-semibold text-white
         select-none
+        ${className || ''}
       `}
         >
             {getInitials(fullName)}

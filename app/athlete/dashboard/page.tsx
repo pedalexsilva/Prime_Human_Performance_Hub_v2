@@ -1,505 +1,562 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-
-export const dynamic = "force-dynamic"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { createBrowserClient } from "@/lib/supabase/client"
-import { useTranslation } from "@/lib/i18n/use-translation"
-import { UserAvatar } from "@/components/athlete/user-avatar"
-import { MetricCard } from "@/components/athlete/metric-card"
+import React, { useState, useEffect } from 'react';
 import {
-  getRecoveryMessage,
-  getHRVMessage,
-  getSleepMessage,
-  formatSleepDuration
-} from "@/lib/utils/metric-messages"
-import { Activity, Heart, Moon, RefreshCw } from "lucide-react"
+  Activity,
+  Moon,
+  Battery,
+  Zap,
+  Menu,
+  Settings,
+  User,
+  Brain,
+  Utensils,
+  FlaskConical,
+  BookOpen,
+  BarChart3,
+  Trophy,
+  MessageSquare,
+  RefreshCw,
+  HeartPulse,
+  ChevronUp,
+  ChevronDown,
+  PlusCircle,
+  Wifi,
+  LogOut,
+  FileText,
+  TrendingUp
+} from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useTranslation } from '@/lib/i18n/use-translation';
+import {
+  ComposedChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Area
+} from 'recharts';
 
-// Lazy load heavy components
-import nextDynamic from "next/dynamic"
+import { UserAvatar } from '@/components/doctor/user-avatar';
+import { createBrowserClient } from '@/lib/supabase/client';
+import { calculatePrimeState, getHRVStatus, getSleepStatus, formatSleepDuration, formatTrend, getInsightMessage } from '@/lib/utils/dashboard-status';
+import type { DashboardMetrics } from '@/lib/queries/athlete-dashboard';
+import { SetupModal } from '@/components/dashboard/settings-modal';
+import { SleepDetailModal } from '@/components/dashboard/sleep-detail-modal';
+import { HRVDetailModal } from '@/components/dashboard/hrv-detail-modal';
+import { GlucoseDetailModal } from '@/components/dashboard/glucose-detail-modal';
+import { RecoveryDetailModal } from '@/components/dashboard/recovery-detail-modal';
 
-const RecoveryChart = nextDynamic(() => import("@/components/athlete/recovery-chart").then(mod => ({ default: mod.RecoveryChart })), {
-  loading: () => <Card><CardContent className="pt-6"><p>Carregando gráfico...</p></CardContent></Card>,
-  ssr: false
-})
+// --- Components ---
 
-const ConnectionCard = nextDynamic(() => import("@/components/athlete/connection-card").then(mod => ({ default: mod.ConnectionCard })), {
-  loading: () => <Card><CardContent className="pt-6"><p>Carregando...</p></CardContent></Card>,
-  ssr: false
-})
+const CircularProgress = ({ value, label, subLabel }: { value: number; label: string; subLabel?: string }) => {
+  const radius = 60;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (value / 100) * circumference;
 
-const UserMenu = nextDynamic(() => import("@/components/ui/user-menu").then(mod => ({ default: mod.UserMenu })), {
-  ssr: false
-})
+  return (
+    <div className="relative flex items-center justify-center w-40 h-40">
+      <svg className="transform -rotate-90 w-full h-full drop-shadow-[0_0_10px_rgba(20,184,166,0.3)]">
+        <circle
+          className="text-slate-800"
+          strokeWidth="8"
+          stroke="currentColor"
+          fill="transparent"
+          r={radius}
+          cx="50%"
+          cy="50%"
+        />
+        <circle
+          className="text-teal-400 transition-all duration-1000 ease-out"
+          strokeWidth="8"
+          strokeDasharray={circumference}
+          strokeDashoffset={strokeDashoffset}
+          strokeLinecap="round"
+          stroke="currentColor"
+          fill="transparent"
+          r={radius}
+          cx="50%"
+          cy="50%"
+        />
+      </svg>
+      <div className="absolute flex flex-col items-center text-white">
+        <span className="text-4xl font-bold font-mono">{value}</span>
+        <span className="text-xs text-slate-400 mt-1 tracking-widest uppercase">{label}</span>
+      </div>
+    </div>
+  );
+};
 
-const SyncButton = nextDynamic(() => import("@/components/athlete/sync-button").then(mod => ({ default: mod.SyncButton })), {
-  ssr: false
-})
+type StatusLevel = 'good' | 'optimal' | 'moderate' | 'pending' | string;
 
-export default function AthleteDashboardPage() {
-  const router = useRouter()
-  const supabase = createBrowserClient()
+interface MetricCardProps {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  subValue: string;
+  status: StatusLevel | string;
+  trend?: number | null;
+  color?: string;
+  onClick?: () => void;
+}
 
-  // Safe translation with fallback
-  let t: any
-  let locale: string = 'pt'
-  let translationError = false
+const MetricCard = ({ icon, label, value, subValue, status, trend, color = "teal", onClick }: MetricCardProps) => (
+  <div
+    onClick={onClick}
+    className="bg-[#0B0F17] border border-slate-800 rounded-2xl p-5 flex flex-col justify-between hover:border-teal-500/30 transition-all duration-300 group cursor-pointer relative overflow-hidden"
+  >
+    <div className={`absolute top-0 right-0 w-20 h-20 bg-${color}-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-${color}-500/10 transition-colors`}></div>
 
-  try {
-    const translation = useTranslation()
-    t = translation.t
-    locale = translation.language || 'pt'
-  } catch (error) {
-    console.error("Translation error:", error)
-    translationError = true
-    // Fallback translations
-    t = (key: string) => {
-      const fallbacks: Record<string, string> = {
-        "common.loading": "Carregando...",
-        "athlete.dashboard.title": "Painel do Atleta",
-        "athlete.dashboard.welcome": "Bem-vindo",
-        "athlete.dashboard.welcomeBack": "Bem-vindo de volta",
-        "athlete.dashboard.profile.notFound": "Perfil não encontrado",
-        "athlete.dashboard.profile.unavailable": "Seu perfil não está disponível",
-        "athlete.dashboard.metrics.recovery": "Recuperação",
-        "athlete.dashboard.metrics.hrv": "HRV",
-        "athlete.dashboard.metrics.sleep": "Sono",
-        "athlete.dashboard.metrics.rmssd": "RMSSD",
-        "athlete.dashboard.metrics.noData": "Sem dados",
-        "athlete.dashboard.metrics.hours": "h",
-        "athlete.dashboard.metrics.minutes": "m",
-        "athlete.dashboard.trends.title": "Tendências",
-        "athlete.dashboard.trends.noRecentData": "Sem dados recentes",
-        "athlete.dashboard.trends.connectPrompt": "Conecte o Whoop para ver tendências",
-        "athlete.dashboard.trends.syncing": "Sincronizando...",
-        "athlete.dashboard.connection.syncingData": "Sincronizando dados do WHOOP...",
-        "athlete.dashboard.lastSync": "Última sincronização",
-        "athlete.dashboard.justNow": "agora mesmo",
-        "athlete.dashboard.minutesAgo": "há {minutes} min",
-        "athlete.dashboard.hoursAgo": "há {hours}h",
-        "athlete.dashboard.daysAgo": "há {days}d",
-      }
-      return fallbacks[key] || key
-    }
-  }
+    <div className="flex justify-between items-start mb-2 relative z-10">
+      <div className={`p-2 rounded-lg bg-slate-900/50 border border-slate-800 group-hover:scale-110 transition-transform duration-300`}>
+        {icon}
+      </div>
+      {trend !== undefined && trend !== null && (
+        <div className={`flex items-center text-xs font-bold px-2 py-1 rounded-full ${trend > 0 ? 'bg-emerald-900/40 text-emerald-400' : 'bg-rose-900/40 text-rose-400'}`}>
+          {trend > 0 ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+          {Math.round(Math.abs(trend))}%
+        </div>
+      )}
+    </div>
 
-  const [loading, setLoading] = useState(true)
-  const [profile, setProfile] = useState<any>(null)
-  const [connection, setConnection] = useState<any>(null)
-  const [metrics, setMetrics] = useState<any>({
-    latestSummary: null,
-    latestRecovery: null,
-    latestSleep: null,
-    chartData: [],
-  })
-  const [syncingInitial, setSyncingInitial] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+    <div className="relative z-10">
+      <h3 className="text-slate-400 text-[10px] font-bold tracking-widest uppercase mb-1">{label}</h3>
+      <div className="flex items-baseline gap-2">
+        <span className="text-2xl font-bold text-white tracking-tight">{value}</span>
+        {subValue && <span className="text-xs text-slate-500 font-mono">{subValue}</span>}
+      </div>
+      {status && (
+        <div className="mt-3 flex items-center gap-1.5">
+          <div className={`w-1.5 h-1.5 rounded-full ${status === 'pending' ? 'bg-amber-500' : status === 'optimal' || status === 'good' || status === 'Eficiente' ? 'bg-teal-500' : 'bg-rose-500'} animate-pulse`}></div>
+          <span className="text-xs text-slate-400 font-medium capitalize">{status}</span>
+        </div>
+      )}
+    </div>
+  </div>
+);
 
-  // Format date in Portuguese or English
-  const formatDate = (locale: string = 'pt'): string => {
-    const date = new Date()
+const NavButton = ({ icon: Icon, label, active, onClick }: { icon: any; label: string; active: boolean; onClick: () => void }) => (
+  <button
+    onClick={onClick}
+    className={`flex flex-col items-center justify-center gap-1 min-w-[64px] py-2 px-1 rounded-xl transition-all duration-200 ${active ? 'text-teal-400 bg-teal-950/30' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/30'}`}
+  >
+    <Icon size={20} strokeWidth={active ? 2.5 : 2} />
+    <span className="text-[9px] font-bold tracking-wider uppercase">{label}</span>
+  </button>
+);
 
-    if (locale === 'pt' || locale === 'pt-PT') {
-      // Portuguese format: Segunda-feira, 18 de Novembro de 2025
-      return date.toLocaleDateString('pt-PT', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      })
-    } else {
-      // English format: Tuesday, November 18, 2025
-      return date.toLocaleDateString('en-US', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      })
-    }
-  }
+const DoctorInsight = ({ title, subtitle, message }: { title: string; subtitle: string; message: string }) => (
+  <div className="bg-[#0B0F17] border border-slate-800 rounded-2xl p-6 relative overflow-hidden shadow-lg h-full flex flex-col justify-center group hover:border-teal-900/30 transition-all duration-300">
+    <div className="absolute top-0 right-0 w-64 h-64 bg-teal-500/5 rounded-full blur-3xl pointer-events-none group-hover:bg-teal-500/10 transition-colors duration-500"></div>
+    <div className="flex items-start gap-5 relative z-10">
+      <div className="p-3 bg-teal-500/10 rounded-xl border border-teal-500/20 shrink-0">
+        <Activity className="text-teal-400" size={24} />
+      </div>
+      <div className="flex-1 space-y-2">
+        <div className="flex flex-col">
+          <h4 className="text-teal-500 text-[10px] font-bold uppercase tracking-widest">{title}</h4>
+          <span className="text-white text-lg font-bold tracking-tight">{subtitle}</span>
+        </div>
+        <p className="text-slate-400 text-sm leading-relaxed font-medium border-l-2 border-slate-800 pl-3 italic">
+          "{message}"
+        </p>
+      </div>
+    </div>
+  </div>
+);
 
-  // Format relative time
-  const formatRelativeTime = (dateString: string | null | undefined): string => {
-    if (!dateString) return t("athlete.dashboard.metrics.noData")
+export default function ApexDashboard() {
+  const [profile, setProfile] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
+  const [dashboardData, setDashboardData] = useState<DashboardMetrics | null>(null);
+  const [dataLoading, setDataLoading] = useState(true);
 
-    const date = new Date(dateString)
-    const now = new Date()
-    const diffMs = now.getTime() - date.getTime()
-    const diffMins = Math.floor(diffMs / (1000 * 60))
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [scrolled, setScrolled] = useState(false);
 
-    if (diffMins < 1) return t("athlete.dashboard.justNow")
-    if (diffMins < 60) return t("athlete.dashboard.minutesAgo").replace("{minutes}", diffMins.toString())
-    if (diffHours < 24) return t("athlete.dashboard.hoursAgo").replace("{hours}", diffHours.toString())
-    return t("athlete.dashboard.daysAgo").replace("{days}", diffDays.toString())
-  }
+  // Settings Modal State
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Detail Modal States
+  const [isSleepModalOpen, setIsSleepModalOpen] = useState(false);
+  const [isHRVModalOpen, setIsHRVModalOpen] = useState(false);
+  const [isGlucoseModalOpen, setIsGlucoseModalOpen] = useState(false);
+  const [isRecoveryModalOpen, setIsRecoveryModalOpen] = useState(false);
+
+
+
+  const supabase = createBrowserClient();
+  const router = useRouter();
+  const { t, language } = useTranslation();
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.push('/login');
+  };
 
   useEffect(() => {
-    let mounted = true
+    const handleScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
-    async function loadData() {
+  useEffect(() => {
+    async function loadProfile() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('id, full_name, avatar_url')
+          .eq('id', user.id)
+          .single();
+        setProfile(profileData);
+      }
+      setLoading(false);
+    }
+    loadProfile();
+  }, []);
+
+  // Load dashboard data
+  useEffect(() => {
+    async function loadDashboardData() {
+      if (!profile) return;
+
+      setDataLoading(true);
       try {
-        // 1) Authentication
-        let user
-        try {
-          const { data: { user: authUser }, error: authError } = await supabase.auth.getUser()
-
-          if (authError) {
-            console.error("Auth error:", authError)
-            if (mounted) {
-              router.push("/auth/login")
-            }
-            return
-          }
-
-          user = authUser
-
-          if (!user) {
-            if (mounted) {
-              router.push("/auth/login")
-            }
-            return
-          }
-        } catch (err) {
-          console.error("Error getting user:", err)
-          if (mounted) {
-            setError("Erro ao verificar autenticação")
-            router.push("/auth/login")
-          }
-          return
+        const response = await fetch('/api/athlete/dashboard');
+        const result = await response.json();
+        if (result.success) {
+          setDashboardData(result.data);
         }
-
-        // 2) Get profile and role
-        try {
-          const { data: profileData, error: profileError } = await supabase
-            .from("profiles")
-            .select("role, full_name, avatar_url")
-            .eq("id", user.id)
-            .maybeSingle()
-
-          if (profileError) {
-            console.error("Profile error:", profileError)
-            if (mounted) {
-              setProfile({ error: true })
-              setLoading(false)
-            }
-            return
-          }
-
-          if (!profileData) {
-            if (mounted) {
-              setProfile({ error: true })
-              setLoading(false)
-            }
-            return
-          }
-
-          if (profileData.role !== "athlete") {
-            if (mounted) {
-              router.push("/doctor/dashboard")
-            }
-            return
-          }
-
-          if (mounted) {
-            setProfile({ ...profileData, id: user.id })
-          }
-        } catch (err) {
-          console.error("Error loading profile:", err)
-          if (mounted) {
-            setProfile({ error: true })
-            setLoading(false)
-          }
-          return
-        }
-
-        // 3) Check Whoop connection
-        try {
-          const { data: connectionData, error: connectionError } = await supabase
-            .from("device_connections")
-            .select("is_active, last_sync_at, initial_sync_completed, created_at, updated_at")
-            .eq("user_id", user.id)
-            .eq("platform", "whoop")
-            .maybeSingle()
-
-          if (connectionError) {
-            console.error("Connection check error:", connectionError)
-          }
-
-          const isConnected = connectionData?.is_active === true
-
-          if (mounted) {
-            setConnection({
-              ...connectionData,
-              isConnected,
-              hasInitialSync: connectionData?.initial_sync_completed === true
-            })
-          }
-
-          // 4) Check if this is a fresh connection
-          const params = new URLSearchParams(window.location.search)
-          const justConnected = params.get("success") === "whoop_connected"
-
-          // Trigger initial sync automatically after OAuth connection
-          if (justConnected && isConnected && !connectionData?.initial_sync_completed && mounted) {
-            console.log("[Dashboard] Fresh WHOOP connection - triggering sync")
-            setSyncingInitial(true)
-
-            try {
-              const response = await fetch('/api/sync/whoop/manual', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: user.id }),
-                credentials: 'include',
-              })
-
-              if (response.ok) {
-                console.log("[Dashboard] Sync triggered successfully")
-                setTimeout(() => {
-                  if (mounted) {
-                    window.history.replaceState({}, "", window.location.pathname)
-                    window.location.reload()
-                  }
-                }, 3000)
-              } else {
-                console.error("[Dashboard] Sync failed:", await response.text())
-              }
-            } catch (error) {
-              console.error("[Dashboard] Error triggering sync:", error)
-            } finally {
-              if (mounted) {
-                setSyncingInitial(false)
-              }
-            }
-          }
-
-          // 5) Get latest metrics only if connected
-          if (isConnected) {
-            try {
-              const [latestSummary, latestRecovery, latestSleep, chartData] = await Promise.all([
-                supabase
-                  .from("daily_summaries")
-                  .select("*")
-                  .eq("user_id", user.id)
-                  .order("summary_date", { ascending: false })
-                  .limit(1)
-                  .maybeSingle()
-                  .then(res => res.data),
-                supabase
-                  .from("recovery_metrics")
-                  .select("recovery_score, hrv_rmssd, metric_date")
-                  .eq("user_id", user.id)
-                  .order("metric_date", { ascending: false })
-                  .limit(1)
-                  .maybeSingle()
-                  .then(res => res.data),
-                supabase
-                  .from("sleep_metrics")
-                  .select("sleep_duration_minutes, metric_date")
-                  .eq("user_id", user.id)
-                  .order("metric_date", { ascending: false })
-                  .limit(1)
-                  .maybeSingle()
-                  .then(res => res.data),
-                supabase
-                  .from("daily_summaries")
-                  .select("summary_date, avg_recovery_score, total_strain, total_sleep_minutes")
-                  .eq("user_id", user.id)
-                  .order("summary_date", { ascending: false })
-                  .limit(7)
-                  .then(res => res.data || [])
-              ])
-
-              if (mounted) {
-                setMetrics({ latestSummary, latestRecovery, latestSleep, chartData })
-              }
-            } catch (err) {
-              console.error("Error loading metrics:", err)
-            }
-          }
-        } catch (err) {
-          console.error("Error in connection/metrics section:", err)
-        }
-
-        if (mounted) {
-          setLoading(false)
-        }
-      } catch (err) {
-        console.error("Unexpected error in loadData:", err)
-        if (mounted) {
-          setError("Erro inesperado ao carregar dados")
-          setLoading(false)
-        }
+      } catch (error) {
+        console.error('Error loading dashboard data:', error);
+      } finally {
+        setDataLoading(false);
       }
     }
+    loadDashboardData();
+  }, [profile]);
 
-    loadData()
-
-    return () => {
-      mounted = false
+  const handleSync = async () => {
+    if (syncing || !profile) return;
+    setSyncing(true);
+    try {
+      const response = await fetch('/api/sync/force', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: profile.id })
+      });
+      const result = await response.json();
+      if (result.success) {
+        alert('Sincronização concluída com sucesso!');
+        // Reload data
+        const dataResponse = await fetch('/api/athlete/dashboard');
+        const dataResult = await dataResponse.json();
+        if (dataResult.success) {
+          setDashboardData(dataResult.data);
+        }
+      } else {
+        alert('Erro na sincronização: ' + (result.error || 'Erro desconhecido'));
+      }
+    } catch (error) {
+      console.error('Sync error:', error);
+      alert('Erro ao sincronizar. Tente novamente.');
+    } finally {
+      setSyncing(false);
     }
-  }, [router, supabase])
+  };
 
-  // Loading state
-  if (loading) {
+  // Calculate status from real data
+  const primeState = dashboardData?.recovery_score
+    ? calculatePrimeState(dashboardData.recovery_score)
+    : calculatePrimeState(null);
+
+  const insight = {
+    title: t("athlete.dashboard.doctorInsight.title"),
+    text: primeState.status === 'optimal'
+      ? t("athlete.dashboard.doctorInsight.optimalMessage")
+      : primeState.status === 'good'
+        ? t("athlete.dashboard.doctorInsight.goodMessage")
+        : t("athlete.dashboard.doctorInsight.moderateMessage")
+  };
+
+  if (dataLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="text-center">
-          <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-          <p className="text-muted-foreground">{t("common.loading")}</p>
+      <div className="min-h-screen bg-[#0B0F17] flex items-center justify-center">
+        <div className="flex flex-col items-center">
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-teal-500 border-r-transparent"></div>
+          <p className="mt-4 text-slate-400">Loading dashboard...</p>
         </div>
       </div>
-    )
+    );
   }
 
-  // Error state
-  if (error) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <Card className="max-w-md">
-          <CardHeader>
-            <CardTitle>Erro</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground">{error}</p>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
-  // Profile error state
-  if (profile?.error) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <Card className="max-w-md">
-          <CardHeader>
-            <CardTitle>{t("athlete.dashboard.profile.notFound")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground">{t("athlete.dashboard.profile.unavailable")}</p>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
-  // Calculate metrics
-  const recoveryScore = metrics.latestRecovery?.recovery_score
-  // Convert HRV from seconds to milliseconds (Whoop API returns seconds)
-  const hrvValue = metrics.latestRecovery?.hrv_rmssd && metrics.latestRecovery.hrv_rmssd > 0
-    ? metrics.latestRecovery.hrv_rmssd * 1000  // Convert to milliseconds
-    : null
-  const sleepMinutes = metrics.latestSleep?.sleep_duration_minutes
-  const sleepHours = sleepMinutes ? sleepMinutes / 60 : null
-
-  // Get first name only
-  const firstName = profile?.full_name?.split(' ')[0] || profile?.full_name || 'Atleta'
-
-  // Main dashboard
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <div className="mx-auto max-w-7xl px-6 py-8">
-        {/* Header with Avatar and Welcome Message */}
-        <div className="mb-8 flex items-start justify-between">
+    <div className="min-h-screen bg-[#0B0F17] text-slate-200 font-sans selection:bg-teal-500/30 pb-32">
+
+      {/* Header */}
+      <header className={`fixed top-0 w-full z-40 transition-all duration-300 ${scrolled ? 'bg-[#0B0F17]/90 backdrop-blur-lg border-b border-slate-800' : 'bg-transparent'}`}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 flex justify-between items-center">
           <div className="flex items-center gap-4">
-            <UserAvatar
-              avatarUrl={profile?.avatar_url}
-              fullName={profile?.full_name}
-              userId={profile?.id}
-              size="lg"
-              editable={true}
-            />
+            <div className="relative">
+              {profile && (
+                <div className="w-16 h-16 rounded-full shadow-lg shadow-black/50">
+                  <UserAvatar
+                    avatarUrl={profile.avatar_url}
+                    fullName={profile.full_name}
+                    userId={profile.id}
+                    size="lg"
+                    editable={false}
+                    className="!w-full !h-full"
+                  />
+                </div>
+              )}
+              <div className="absolute bottom-0 right-0 w-4 h-4 bg-teal-500 border-4 border-[#0B0F17] rounded-full"></div>
+            </div>
             <div>
-              <h1 className="text-3xl font-bold">
-                {t("athlete.dashboard.welcomeBack")}, {firstName}!
-              </h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                {formatDate(locale)}
-              </p>
-              <div className="flex items-center gap-2 mt-2">
-                <RefreshCw className="h-3 w-3 text-muted-foreground" />
-                <p className="text-xs text-muted-foreground">
-                  {t("athlete.dashboard.lastSync")}: {formatRelativeTime(connection?.last_sync_at)}
-                </p>
+              <h1 className="text-2xl font-bold text-white tracking-tight">{profile?.full_name || 'Athlete'}</h1>
+              <div className="flex items-center gap-3 mt-1">
+                <span className="text-sm text-slate-400 font-medium">
+                  {new Date().toLocaleDateString(language === 'pt' ? 'pt-PT' : 'en-US', { weekday: 'short', day: 'numeric', month: 'short' })}
+                </span>
+                <button
+                  onClick={handleSync}
+                  disabled={syncing}
+                  className="flex items-center gap-1.5 text-[10px] font-bold bg-slate-800/80 px-2.5 py-1 rounded-full text-teal-400 border border-teal-900/30 hover:bg-slate-800 transition-all hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
+                >
+                  <RefreshCw size={10} className={syncing ? "animate-spin" : ""} /> {syncing ? t("athlete.dashboard.connection.syncing") : 'SYNC'}
+                </button>
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            {connection?.isConnected && <SyncButton />}
-            <UserMenu userName={profile?.full_name || "Athlete"} userRole="athlete" />
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="p-2 text-slate-400 hover:text-white transition-colors"
+            >
+              <Settings size={20} />
+            </button>
+            <button
+              onClick={handleLogout}
+              className="p-2 text-slate-400 hover:text-rose-400 transition-colors"
+              title={t("userMenu.logout")}
+            >
+              <LogOut size={20} />
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="pt-24 max-w-7xl mx-auto px-4 sm:px-6 space-y-6 pb-32">
+
+        {/* Top Section: Prime State & Insight */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+
+          {/* Prime State Card */}
+          <div className="col-span-1 bg-slate-900/40 border border-slate-800 rounded-3xl p-4 md:p-6 flex flex-col items-center justify-center relative overflow-hidden min-h-[220px] md:min-h-[250px]">
+            {/* Background Glow */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-teal-500/20 rounded-full blur-[50px] pointer-events-none"></div>
+
+            <div className="w-full flex justify-between items-center mb-4 px-2">
+              <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-teal-500">
+                <div className="w-2 h-2 bg-teal-500 rounded-full animate-pulse"></div>
+                Status Atual
+              </span>
+              <span className="text-[10px] font-mono text-slate-500 bg-slate-900 px-2 py-1 rounded border border-slate-800">
+                {dashboardData?.connected_services?.some(s => s === 'whoop') ? 'WHOOP: ON' : 'DEVICES: OFF'}
+              </span>
+            </div>
+
+            <div className="flex flex-row items-center gap-4 md:gap-6 scale-90 md:scale-100 transition-transform">
+              <CircularProgress value={primeState.score} label="PRIME" />
+              <div className="flex flex-col gap-1">
+                <h2 className="text-2xl md:text-3xl font-bold text-white leading-none">PRIME<br />STATE</h2>
+                <p className="text-xs text-slate-400 max-w-[100px]">{primeState.status}</p>
+              </div>
+            </div>
+          </div>
+          {/* Doctor Insight */}
+          <div className="col-span-1 md:col-span-1 lg:col-span-2 flex flex-col justify-center">
+            <DoctorInsight
+              title={t("athlete.dashboard.doctorInsight.title")}
+              subtitle={t("athlete.dashboard.doctorInsight.capacity")}
+              message={insight.text || t("athlete.dashboard.doctorInsight.defaultMessage")}
+            />
           </div>
         </div>
 
-        {/* Initial Sync Message */}
-        {syncingInitial && (
-          <Card className="mb-6 border-primary/50 bg-primary/5">
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                <p className="text-sm font-medium">
-                  {t("athlete.dashboard.connection.syncingData")}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Whoop Connection */}
-        <div className="mb-8">
-          <ConnectionCard isConnected={connection?.isConnected} lastSync={connection?.last_sync_at} />
-        </div>
-
         {/* Metrics Grid */}
-        <div className="mb-8 grid gap-6 md:grid-cols-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
           <MetricCard
-            title={t("athlete.dashboard.metrics.recovery")}
-            value={recoveryScore ? `${recoveryScore}%` : t("athlete.dashboard.metrics.noData")}
-            subtitle={metrics.latestRecovery?.metric_date || undefined}
-            message={getRecoveryMessage(recoveryScore)}
-            icon={<Activity className="h-5 w-5" />}
+            icon={<HeartPulse size={20} className="text-teal-400" />}
+            label={t("athlete.dashboard.metrics.hrv")}
+            value={`${Math.round(dashboardData?.hrv_rmssd || 0)}${t("athlete.dashboard.metrics.ms")}`}
+            subValue={`${Math.round(dashboardData?.resting_heart_rate || 0)} ${t("athlete.dashboard.metrics.bpm")}`}
+            trend={dashboardData?.hrv_trend}
+            color="teal"
+            status={getHRVStatus(dashboardData?.hrv_rmssd || null)}
+            onClick={() => setIsHRVModalOpen(true)}
           />
-
           <MetricCard
-            title={t("athlete.dashboard.metrics.hrv")}
-            value={hrvValue && hrvValue > 0 ? `${Math.round(hrvValue)} ms` : t("athlete.dashboard.metrics.noData")}
-            subtitle={t("athlete.dashboard.metrics.rmssd")}
-            message={getHRVMessage(hrvValue)}
-            icon={<Heart className="h-5 w-5" />}
+            icon={<Moon size={20} className="text-indigo-400" />}
+            label={t("athlete.dashboard.metrics.sleep")}
+            value={formatSleepDuration(dashboardData?.sleep_duration_minutes || null)}
+            subValue=""
+            status={getSleepStatus(dashboardData?.sleep_duration_minutes || null)}
+            trend={dashboardData?.sleep_trend}
+            color="indigo"
+            onClick={() => setIsSleepModalOpen(true)}
           />
-
           <MetricCard
-            title={t("athlete.dashboard.metrics.sleep")}
-            value={formatSleepDuration(sleepMinutes)}
-            subtitle={metrics.latestSleep?.metric_date || undefined}
-            message={getSleepMessage(sleepHours)}
-            icon={<Moon className="h-5 w-5" />}
+            icon={<Battery size={20} className="text-amber-400" />}
+            label={t("athlete.dashboard.metrics.glucose")}
+            value={t("athlete.dashboard.metrics.noData")}
+            subValue="--"
+            status="pending"
+            color="amber"
+            onClick={() => setIsGlucoseModalOpen(true)}
+          />
+          <MetricCard
+            icon={<Brain size={20} className="text-sky-400" />}
+            label={t("athlete.dashboard.metrics.readiness")}
+            value={dashboardData?.recovery_score ? `${Math.round(dashboardData.recovery_score)}%` : t("athlete.dashboard.metrics.noData")}
+            subValue={t("athlete.dashboard.metrics.cognitive")}
+            trend={dashboardData?.recovery_trend}
+            color="sky"
+            status={dashboardData?.recovery_score && dashboardData.recovery_score >= 67 ? 'optimal' : dashboardData?.recovery_score && dashboardData.recovery_score >= 34 ? 'good' : 'moderate'}
+            onClick={() => setIsRecoveryModalOpen(true)}
           />
         </div>
 
-        {/* Trends Chart */}
-        {metrics.chartData && metrics.chartData.length > 0 ? (
-          <RecoveryChart data={metrics.chartData} />
-        ) : (
-          <Card>
-            <CardHeader>
-              <CardTitle>{t("athlete.dashboard.trends.title")}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                {connection?.isConnected
-                  ? syncingInitial
-                    ? t("athlete.dashboard.trends.syncing")
-                    : t("athlete.dashboard.trends.noRecentData")
-                  : t("athlete.dashboard.trends.connectPrompt")}
-              </p>
-            </CardContent>
-          </Card>
-        )}
+        {/*        {/* Chart Section */}
+        <div className="bg-[#0B0F17] rounded-2xl p-6 border border-slate-800/50">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
+            <div className="flex items-center gap-2">
+              <Activity size={16} className="text-teal-500" />
+              <h3 className="text-white font-bold">{t("athlete.dashboard.chart.title")}</h3>
+            </div>
+            <div className="flex items-center gap-4 text-xs font-mono">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-slate-700"></div>
+                <span className="text-slate-400">{t("athlete.dashboard.chart.stress")}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-teal-500 shadow-[0_0_10px_rgba(20,184,166,0.5)]"></div>
+                <span className="text-teal-400">{t("athlete.dashboard.chart.performance")}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="h-[300px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              {dashboardData?.chartData ? (
+                <ComposedChart data={dashboardData.chartData}>
+                  <defs>
+                    <linearGradient id="colorPerformance" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#14B8A6" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#14B8A6" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                  <XAxis
+                    dataKey="date"
+                    stroke="#475569"
+                    fontSize={10}
+                    tickLine={false}
+                    axisLine={false}
+                    dy={10}
+                  />
+                  <YAxis
+                    stroke="#475569"
+                    fontSize={10}
+                    tickLine={false}
+                    axisLine={false}
+                    dx={-10}
+                  />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#0F172A', borderColor: '#1E293B', borderRadius: '8px' }}
+                    itemStyle={{ color: '#E2E8F0' }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="performance"
+                    stroke="#14B8A6"
+                    strokeWidth={2}
+                    fillOpacity={1}
+                    fill="url(#colorPerformance)"
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="stress"
+                    stroke="#475569"
+                    strokeWidth={1}
+                    strokeDasharray="4 4"
+                    dot={false}
+                  />
+                </ComposedChart>
+              ) : (
+                <div className="h-full flex items-center justify-center text-slate-500 text-sm">
+                  {t("athlete.dashboard.trends.noRecentData")}
+                </div>
+              )}
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </main>
+
+      {/* Floating Dock Navigation */}
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+        <div className="bg-[#0B0F17]/90 backdrop-blur-xl border border-slate-800/50 rounded-2xl p-2 shadow-2xl shadow-black/50 flex items-center gap-1">
+          <NavButton icon={Activity} label={t("athlete.dashboard.nav.dashboard")} active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} />
+          <NavButton icon={PlusCircle} label={t("athlete.dashboard.nav.inputs")} active={activeTab === 'inputs'} onClick={() => setActiveTab('inputs')} />
+          <NavButton icon={Utensils} label={t("athlete.dashboard.nav.fuel")} active={activeTab === 'fuel'} onClick={() => setActiveTab('fuel')} />
+          <NavButton icon={FlaskConical} label={t("athlete.dashboard.nav.lab")} active={activeTab === 'lab'} onClick={() => setActiveTab('lab')} />
+          <NavButton icon={Brain} label={t("athlete.dashboard.nav.mind")} active={activeTab === 'mind'} onClick={() => setActiveTab('mind')} />
+          <NavButton icon={FileText} label={t("athlete.dashboard.nav.protocols")} active={activeTab === 'protocols'} onClick={() => setActiveTab('protocols')} />
+          <NavButton icon={TrendingUp} label={t("athlete.dashboard.nav.trends")} active={activeTab === 'trends'} onClick={() => setActiveTab('trends')} />
+          <NavButton icon={Trophy} label={t("athlete.dashboard.nav.rank")} active={activeTab === 'rank'} onClick={() => setActiveTab('rank')} />
+          <NavButton icon={MessageSquare} label={t("athlete.dashboard.nav.chat")} active={activeTab === 'chat'} onClick={() => setActiveTab('chat')} />
+        </div>
       </div>
-    </div>
-  )
+
+
+      {/* Modals */}
+      <SetupModal
+        isModalOpen={isModalOpen}
+        setIsModalOpen={setIsModalOpen}
+        connectedServices={dashboardData?.connected_services || []}
+        userId={profile?.id || ''}
+      />
+
+      <SleepDetailModal
+        isOpen={isSleepModalOpen}
+        onClose={() => setIsSleepModalOpen(false)}
+        sleepData={dashboardData?.latestSleepMetrics}
+      />
+
+      <HRVDetailModal
+        isOpen={isHRVModalOpen}
+        onClose={() => setIsHRVModalOpen(false)}
+        dashboardData={dashboardData}
+      />
+
+      <GlucoseDetailModal
+        isOpen={isGlucoseModalOpen}
+        onClose={() => setIsGlucoseModalOpen(false)}
+      />
+
+      <RecoveryDetailModal
+        isOpen={isRecoveryModalOpen}
+        onClose={() => setIsRecoveryModalOpen(false)}
+        dashboardData={dashboardData}
+      />
+
+    </div >
+  );
 }
+

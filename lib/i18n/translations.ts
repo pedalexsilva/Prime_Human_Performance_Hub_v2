@@ -203,6 +203,49 @@ export const athleteDashboardTranslations = {
         minutesAgo: "há {minutes} min",
         hoursAgo: "há {hours}h",
         daysAgo: "há {days}d",
+        primeState: {
+          title: "PRIME STATE",
+          subtitle: "PRIME STATE",
+          status: "STATUS ATUAL",
+          whoop: "WHOOP: ON"
+        },
+        doctorInsight: {
+          title: "ORDEM DO MÉDICO",
+          capacity: "CAPACIDADE MÁXIMA",
+          defaultMessage: "Neuroplasticidade otimizada. O teu córtex pré-frontal está limpo de inflamação e tens luz verde para a fusão de empresa e treino de alta intensidade.",
+          optimalMessage: "Neuroplasticidade otimizada. O teu córtex pré-frontal está limpo de inflamação e tens luz verde para a fusão de empresa e treino de alta intensidade.",
+          goodMessage: "Estado de recuperação sólido. O teu corpo está pronto para treinos moderados e foco mental sustentado.",
+          moderateMessage: "Atenção à recuperação. O sistema nervoso precisa de descanso. Prioriza sono e atividades de baixa intensidade hoje."
+        },
+        metrics: {
+          hrv: "VFC (STRESS)",
+          sleep: "SONO",
+          glucose: "GLICOSE",
+          readiness: "PRONTIDÃO",
+          cognitive: "COGNITIVA",
+          bpm: "bpm",
+          ms: "ms",
+          noData: "No Data",
+          pending: "pending",
+          good: "good",
+          optimal: "optimal"
+        },
+        chart: {
+          title: "Stress vs. Performance",
+          stress: "STRESS",
+          performance: "PERFORMANCE"
+        },
+        nav: {
+          dashboard: "DASHBOARD",
+          inputs: "INPUTS",
+          fuel: "FUEL",
+          lab: "LAB",
+          mind: "MIND",
+          protocols: "PROTOCOLS",
+          trends: "TRENDS",
+          rank: "RANK",
+          chat: "CHAT"
+        },
         connection: {
           connected: "Whoop conectado",
           disconnected: "Whoop desconectado",
@@ -215,16 +258,6 @@ export const athleteDashboardTranslations = {
           syncingAuto: "Conexão ativa e sincronização automática",
           connectionSuccess: "Conexão estabelecida! Sincronizando dados...",
           syncingData: "Sincronizando seus dados WHOOP pela primeira vez...",
-        },
-        metrics: {
-          recovery: "Recuperação",
-          hrv: "HRV",
-          sleep: "Sono",
-          strain: "Esforço",
-          rmssd: "RMSSD",
-          noData: "Sem dados",
-          hours: "h",
-          minutes: "m",
         },
         trends: {
           title: "Tendências",
@@ -444,6 +477,49 @@ export const athleteDashboardTranslations = {
         minutesAgo: "{minutes} min ago",
         hoursAgo: "{hours}h ago",
         daysAgo: "{days}d ago",
+        primeState: {
+          title: "PRIME STATE",
+          subtitle: "PRIME STATE",
+          status: "CURRENT STATUS",
+          whoop: "WHOOP: ON"
+        },
+        doctorInsight: {
+          title: "DOCTOR'S ORDER",
+          capacity: "MAXIMUM CAPACITY",
+          defaultMessage: "Optimized neuroplasticity. Your prefrontal cortex is clear of inflammation and you have a green light for business fusion and high-intensity training.",
+          optimalMessage: "Optimized neuroplasticity. Your prefrontal cortex is clear of inflammation and you have a green light for business fusion and high-intensity training.",
+          goodMessage: "Solid recovery state. Your body is ready for moderate training and sustained mental focus.",
+          moderateMessage: "Attention to recovery needed. Your nervous system needs rest. Prioritize sleep and low-intensity activities today."
+        },
+        metrics: {
+          hrv: "HRV (STRESS)",
+          sleep: "SLEEP",
+          glucose: "GLUCOSE",
+          readiness: "READINESS",
+          cognitive: "COGNITIVE",
+          bpm: "bpm",
+          ms: "ms",
+          noData: "No Data",
+          pending: "pending",
+          good: "good",
+          optimal: "optimal"
+        },
+        chart: {
+          title: "Stress vs. Performance",
+          stress: "STRESS",
+          performance: "PERFORMANCE"
+        },
+        nav: {
+          dashboard: "DASHBOARD",
+          inputs: "INPUTS",
+          fuel: "FUEL",
+          lab: "LAB",
+          mind: "MIND",
+          protocols: "PROTOCOLS",
+          trends: "TRENDS",
+          rank: "RANK",
+          chat: "CHAT"
+        },
         connection: {
           connected: "Whoop connected",
           disconnected: "Whoop disconnected",
@@ -456,16 +532,6 @@ export const athleteDashboardTranslations = {
           syncingAuto: "Active connection and automatic syncing",
           connectionSuccess: "Connection established! Syncing data...",
           syncingData: "Syncing your WHOOP data for the first time...",
-        },
-        metrics: {
-          recovery: "Recovery",
-          hrv: "HRV",
-          sleep: "Sleep",
-          strain: "Strain",
-          rmssd: "RMSSD",
-          noData: "No data",
-          hours: "h",
-          minutes: "m",
         },
         trends: {
           title: "Trends",
